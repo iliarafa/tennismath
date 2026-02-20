@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Heart, X } from 'lucide-react';
+import { Trophy, Heart, X, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import { TennisCourtHorizontal } from './TennisCourtHorizontal';
 
@@ -18,6 +18,11 @@ interface GameState {
   isAnimating: boolean;
   gameOver: boolean;
   winner: Player | null;
+}
+
+interface MathTennisGameProps {
+  mode: 'ai' | 'human';
+  onBack: () => void;
 }
 
 function generateMathProblem(): { question: string; answer: number } {
@@ -54,7 +59,7 @@ function generateMathProblem(): { question: string; answer: number } {
   };
 }
 
-export function MathTennisGame() {
+export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
   const [gameState, setGameState] = useState<GameState>(() => {
     const problem = generateMathProblem();
     return {
@@ -75,14 +80,20 @@ export function MathTennisGame() {
   const [userAnswer, setUserAnswer] = useState('');
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
 
+  const isHuman = mode === 'human';
+  const p1Label = isHuman ? 'P1' : 'Pl';
+  const p2Label = isHuman ? 'P2' : 'AI';
+
+  // AI auto-turn — only active in AI mode
   useEffect(() => {
+    if (mode !== 'ai') return;
     if (gameState.currentPlayer === 'opponent' && !gameState.isAnimating && !gameState.gameOver) {
       const timer = setTimeout(() => {
         handleOpponentTurn();
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [gameState.currentPlayer, gameState.isAnimating, gameState.gameOver]);
+  }, [gameState.currentPlayer, gameState.isAnimating, gameState.gameOver, mode]);
 
   const handleOpponentTurn = () => {
     const isCorrect = Math.random() < 0.7;
@@ -132,9 +143,10 @@ export function MathTennisGame() {
     }, 800);
   };
 
-  const handlePlayerAnswer = () => {
+  const handleAnswer = () => {
     if (!userAnswer || gameState.isAnimating || gameState.gameOver) return;
 
+    const currentPlayer = gameState.currentPlayer;
     const isCorrect = parseInt(userAnswer) === gameState.answer;
     setShowFeedback(isCorrect ? 'correct' : 'wrong');
 
@@ -143,42 +155,79 @@ export function MathTennisGame() {
       setUserAnswer('');
 
       if (isCorrect) {
-        hitBall('player', 'opponent');
-      } else {
-        const newOpponentScore = gameState.opponentScore + 1;
-        const newPlayerLives = gameState.playerLives - 1;
-
-        if (newPlayerLives <= 0) {
-          setGameState(prev => ({
-            ...prev,
-            opponentScore: newOpponentScore,
-            playerLives: 0,
-            gameOver: true,
-            winner: 'opponent',
-          }));
+        if (currentPlayer === 'player') {
+          hitBall('player', 'opponent');
         } else {
-          const problem = generateMathProblem();
-          setGameState(prev => ({
-            ...prev,
-            currentPlayer: 'opponent',
-            opponentScore: newOpponentScore,
-            playerLives: newPlayerLives,
-            ballPosition: 'opponent',
-            question: problem.question,
-            answer: problem.answer,
-          }));
+          hitBall('opponent', 'player');
+        }
+      } else {
+        // Wrong answer — the other player scores
+        if (currentPlayer === 'player') {
+          const newOpponentScore = gameState.opponentScore + 1;
+          const newPlayerLives = gameState.playerLives - 1;
+
+          if (newPlayerLives <= 0) {
+            setGameState(prev => ({
+              ...prev,
+              opponentScore: newOpponentScore,
+              playerLives: 0,
+              gameOver: true,
+              winner: 'opponent',
+            }));
+          } else {
+            const problem = generateMathProblem();
+            setGameState(prev => ({
+              ...prev,
+              currentPlayer: 'opponent',
+              opponentScore: newOpponentScore,
+              playerLives: newPlayerLives,
+              ballPosition: 'opponent',
+              question: problem.question,
+              answer: problem.answer,
+            }));
+          }
+        } else {
+          // Opponent (P2) got it wrong
+          const newPlayerScore = gameState.playerScore + 1;
+          const newOpponentLives = gameState.opponentLives - 1;
+
+          if (newOpponentLives <= 0) {
+            setGameState(prev => ({
+              ...prev,
+              playerScore: newPlayerScore,
+              opponentLives: 0,
+              gameOver: true,
+              winner: 'player',
+            }));
+          } else {
+            const problem = generateMathProblem();
+            setGameState(prev => ({
+              ...prev,
+              currentPlayer: 'opponent',
+              playerScore: newPlayerScore,
+              opponentLives: newOpponentLives,
+              question: problem.question,
+              answer: problem.answer,
+              ballPosition: 'opponent',
+            }));
+          }
         }
       }
     }, 500);
   };
 
+  // In human mode, both players can use the keypad on their turn
+  const isCurrentPlayerTurn = isHuman
+    ? !gameState.isAnimating && showFeedback === null && !gameState.gameOver
+    : gameState.currentPlayer === 'player' && !gameState.isAnimating && showFeedback === null && !gameState.gameOver;
+
   const handleKeypadPress = (value: string) => {
-    if (gameState.currentPlayer !== 'player' || gameState.isAnimating || showFeedback !== null) return;
+    if (!isCurrentPlayerTurn) return;
 
     if (value === 'delete') {
       setUserAnswer(prev => prev.slice(0, -1));
     } else if (value === 'enter') {
-      handlePlayerAnswer();
+      handleAnswer();
     } else {
       setUserAnswer(prev => prev + value);
     }
@@ -217,19 +266,44 @@ export function MathTennisGame() {
     }
   };
 
+  const getStatusMessage = () => {
+    if (gameState.gameOver) {
+      if (isHuman) {
+        return gameState.winner === 'player' ? 'P1 Wins!' : 'P2 Wins!';
+      }
+      return gameState.winner === 'player' ? 'You Win!' : 'Game Over!';
+    }
+    if (isHuman) {
+      return gameState.currentPlayer === 'player'
+        ? "Player 1's turn - solve to hit!"
+        : "Player 2's turn - solve to hit!";
+    }
+    return gameState.currentPlayer === 'player'
+      ? 'Your turn - solve to hit!'
+      : 'Opponent is thinking...';
+  };
+
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-[#1a3a2e] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* Score Board */}
-      <div className="bg-[#1a3a2e] text-white py-2 px-6">
+      <div className="bg-[#1a3a2e] text-white py-2 px-6 relative">
+        {/* Back Button */}
+        <button
+          onClick={onBack}
+          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+
         <div className="flex items-center justify-center gap-8 mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm">Pl</span>
+            <span className="text-sm">{p1Label}</span>
             <span className="text-3xl font-bold">{gameState.playerScore}</span>
           </div>
           <span className="text-2xl">:</span>
           <div className="flex items-center gap-2">
             <span className="text-3xl font-bold">{gameState.opponentScore}</span>
-            <span className="text-sm">AI</span>
+            <span className="text-sm">{p2Label}</span>
           </div>
         </div>
 
@@ -307,13 +381,11 @@ export function MathTennisGame() {
       {/* Status Message */}
       <div className="text-center text-white py-1 text-sm">
         {gameState.gameOver ? (
-          <span className="text-yellow-400 font-bold">
-            {gameState.winner === 'player' ? 'You Win!' : 'Game Over!'}
-          </span>
-        ) : gameState.currentPlayer === 'player' ? (
-          <span>Your turn - solve to hit!</span>
+          <span className="text-yellow-400 font-bold">{getStatusMessage()}</span>
+        ) : gameState.currentPlayer === 'player' || isHuman ? (
+          <span>{getStatusMessage()}</span>
         ) : (
-          <span className="text-gray-400">Opponent is thinking...</span>
+          <span className="text-gray-400">{getStatusMessage()}</span>
         )}
       </div>
 
@@ -361,7 +433,7 @@ export function MathTennisGame() {
           <button
             key={num}
             onClick={() => handleKeypadPress(num.toString())}
-            disabled={gameState.currentPlayer !== 'player' || gameState.isAnimating || showFeedback !== null || gameState.gameOver}
+            disabled={!isCurrentPlayerTurn}
             className="h-14 text-white text-2xl font-bold border border-[#0f2419] hover:bg-[#244a35] active:bg-[#2d5940] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {num}
@@ -370,7 +442,7 @@ export function MathTennisGame() {
 
         <button
           onClick={() => handleKeypadPress('delete')}
-          disabled={gameState.currentPlayer !== 'player' || gameState.isAnimating || showFeedback !== null || !userAnswer || gameState.gameOver}
+          disabled={!isCurrentPlayerTurn || !userAnswer}
           className="h-14 text-white text-2xl font-bold border border-[#0f2419] hover:bg-[#244a35] active:bg-[#2d5940] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
         >
           <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -382,7 +454,7 @@ export function MathTennisGame() {
 
         <button
           onClick={() => handleKeypadPress('0')}
-          disabled={gameState.currentPlayer !== 'player' || gameState.isAnimating || showFeedback !== null || gameState.gameOver}
+          disabled={!isCurrentPlayerTurn}
           className="h-14 text-white text-2xl font-bold border border-[#0f2419] hover:bg-[#244a35] active:bg-[#2d5940] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           0
@@ -390,7 +462,7 @@ export function MathTennisGame() {
 
         <button
           onClick={() => handleKeypadPress('enter')}
-          disabled={gameState.currentPlayer !== 'player' || gameState.isAnimating || showFeedback !== null || !userAnswer || gameState.gameOver}
+          disabled={!isCurrentPlayerTurn || !userAnswer}
           className="h-14 text-white text-2xl font-bold border border-[#0f2419] hover:bg-[#244a35] active:bg-[#2d5940] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
         >
           <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none">
