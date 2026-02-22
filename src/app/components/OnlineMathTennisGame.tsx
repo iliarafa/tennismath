@@ -398,7 +398,7 @@ export function OnlineMathTennisGame({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={`absolute inset-x-0 top-1 font-bold text-xl ${
+              className={`absolute right-4 top-1/2 -translate-y-1/2 font-bold text-xl ${
                 showFeedback === 'correct' ? 'text-green-600' : 'text-red-600'
               }`}
             >
