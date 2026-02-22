@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 
@@ -39,8 +39,11 @@ function TennisBall() {
 
 export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps) {
   const [selected, setSelected] = useState<Level | null>(null);
+  const navigatingRef = useRef(false);
 
-  const handleTap = (level: Level) => {
+  const handleSelect = (level: Level) => {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
     setSelected(level);
     setTimeout(() => onSelectLevel(level), 300);
   };
@@ -65,29 +68,27 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
       {/* Level Buttons */}
       <div className="flex flex-col gap-4 w-full max-w-xs">
         {levels.map((level) => (
-          <div key={level.id} className="relative flex items-center">
-            <div className="w-10 flex justify-center shrink-0">
-              <AnimatePresence>
-                {selected === level.id && (
-                  <motion.div
-                    layoutId="level-ball"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                  >
-                    <TennisBall />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <Button
-              onClick={() => handleTap(level.id)}
-              className={`flex-1 py-4 text-xl font-bold rounded-xl ${level.className}`}
-            >
-              {level.label}
-            </Button>
-          </div>
+          <Button
+            key={level.id}
+            onClick={() => handleSelect(level.id)}
+            className={`w-full py-4 text-xl font-bold rounded-xl ${level.className}`}
+          >
+            <AnimatePresence>
+              {selected === level.id && (
+                <motion.span
+                  layoutId="level-ball"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  className="inline-flex"
+                >
+                  <TennisBall />
+                </motion.span>
+              )}
+            </AnimatePresence>
+            {level.label}
+          </Button>
         ))}
       </div>
     </div>

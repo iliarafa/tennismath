@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { LandingPage } from './components/LandingPage';
 import { LevelSelectPage } from './components/LevelSelectPage';
+import { HumanLobbyPage } from './components/HumanLobbyPage';
 import { MathTennisGame } from './components/MathTennisGame';
 
-type Screen = 'landing' | 'level-select' | 'game';
+type Screen = 'landing' | 'level-select' | 'human-lobby' | 'game';
 type GameMode = 'ai' | 'human';
 type Level = 'amateur' | 'pro' | 'world-class';
 
@@ -17,7 +18,7 @@ export default function App() {
     if (selectedMode === 'ai') {
       setScreen('level-select');
     } else {
-      setScreen('game');
+      setScreen('human-lobby');
     }
   };
 
@@ -41,6 +42,9 @@ export default function App() {
             onSelectLevel={handleSelectLevel}
             onBack={handleBack}
           />
+        )}
+        {screen === 'human-lobby' && (
+          <HumanLobbyPage onBack={handleBack} />
         )}
         {screen === 'game' && (
           <MathTennisGame mode={mode} onBack={handleBack} />
