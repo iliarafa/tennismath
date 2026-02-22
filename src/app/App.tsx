@@ -3,10 +3,9 @@ import { LandingPage } from './components/LandingPage';
 import { LevelSelectPage } from './components/LevelSelectPage';
 import { HumanLobbyPage } from './components/HumanLobbyPage';
 import { MathTennisGame } from './components/MathTennisGame';
+import type { GameMode, Level } from './game/types';
 
 type Screen = 'landing' | 'level-select' | 'human-lobby' | 'game';
-type GameMode = 'ai' | 'human';
-type Level = 'amateur' | 'pro' | 'world-class';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('landing');
@@ -15,20 +14,32 @@ export default function App() {
 
   const handleSelectMode = (selectedMode: GameMode) => {
     setMode(selectedMode);
-    if (selectedMode === 'ai') {
-      setScreen('level-select');
+    setScreen('level-select');
+  };
+
+  const handleSelectLevel = (selectedLevel: Level) => {
+    setLevel(selectedLevel);
+    if (mode === 'ai') {
+      setScreen('game');
     } else {
       setScreen('human-lobby');
     }
   };
 
-  const handleSelectLevel = (selectedLevel: Level) => {
-    setLevel(selectedLevel);
-    setScreen('game');
-  };
-
   const handleBack = () => {
-    setScreen('landing');
+    switch (screen) {
+      case 'game':
+        setScreen('level-select');
+        break;
+      case 'human-lobby':
+        setScreen('level-select');
+        break;
+      case 'level-select':
+        setScreen('landing');
+        break;
+      default:
+        setScreen('landing');
+    }
   };
 
   return (
@@ -44,10 +55,13 @@ export default function App() {
           />
         )}
         {screen === 'human-lobby' && (
-          <HumanLobbyPage onBack={handleBack} />
+          <HumanLobbyPage
+            onBack={handleBack}
+            onStartGame={() => setScreen('game')}
+          />
         )}
         {screen === 'game' && (
-          <MathTennisGame mode={mode} onBack={handleBack} />
+          <MathTennisGame mode={mode} level={level} onBack={handleBack} />
         )}
       </div>
     </div>

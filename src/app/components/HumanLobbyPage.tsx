@@ -2,9 +2,10 @@ import { Button } from './ui/button';
 
 interface HumanLobbyPageProps {
   onBack: () => void;
+  onStartGame: () => void;
 }
 
-export function HumanLobbyPage({ onBack }: HumanLobbyPageProps) {
+export function HumanLobbyPage({ onBack, onStartGame }: HumanLobbyPageProps) {
   return (
     <div className="h-full w-full flex flex-col items-center justify-center bg-[#1a3a2e] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] px-8 gap-12">
       {/* Back Button */}
@@ -25,14 +26,10 @@ export function HumanLobbyPage({ onBack }: HumanLobbyPageProps) {
       {/* Action Buttons */}
       <div className="flex flex-col gap-4 w-full max-w-xs">
         <Button
+          onClick={onStartGame}
           className="w-full py-4 text-xl font-bold rounded-xl bg-green-600 hover:bg-green-700 text-white"
         >
-          Create Room
-        </Button>
-        <Button
-          className="w-full py-4 text-xl font-bold rounded-xl bg-yellow-500 hover:bg-yellow-600 text-[#1a3a2e]"
-        >
-          Join Game
+          Start Local Game
         </Button>
       </div>
     </div>

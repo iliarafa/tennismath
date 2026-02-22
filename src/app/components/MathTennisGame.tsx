@@ -1,137 +1,147 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Heart, X, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import { TennisCourtHorizontal } from './TennisCourtHorizontal';
-
-type Player = 'player' | 'opponent';
-
-interface GameState {
-  currentPlayer: Player;
-  playerScore: number;
-  opponentScore: number;
-  playerLives: number;
-  opponentLives: number;
-  question: string;
-  answer: number;
-  ballPosition: 'player' | 'opponent' | 'net';
-  isAnimating: boolean;
-  gameOver: boolean;
-  winner: Player | null;
-}
+import type { Player, Level, GameState } from '../game/types';
+import { LEVEL_CONFIGS } from '../game/levels';
+import { generateMathProblem } from '../game/math';
+import {
+  freshMatchScore,
+  scorePoint,
+  scoreGame,
+  getServer,
+  formatPointScore,
+} from '../game/scoring';
+import { useHitTimer } from '../game/useHitTimer';
 
 interface MathTennisGameProps {
   mode: 'ai' | 'human';
+  level: Level;
   onBack: () => void;
 }
 
-function generateMathProblem(): { question: string; answer: number } {
-  const operations = ['+', '-', '*'];
-  const operation = operations[Math.floor(Math.random() * operations.length)];
-
-  let num1: number, num2: number, answer: number;
-
-  switch (operation) {
-    case '+':
-      num1 = Math.floor(Math.random() * 50) + 1;
-      num2 = Math.floor(Math.random() * 50) + 1;
-      answer = num1 + num2;
-      break;
-    case '-':
-      num1 = Math.floor(Math.random() * 50) + 20;
-      num2 = Math.floor(Math.random() * num1);
-      answer = num1 - num2;
-      break;
-    case '*':
-      num1 = Math.floor(Math.random() * 12) + 1;
-      num2 = Math.floor(Math.random() * 12) + 1;
-      answer = num1 * num2;
-      break;
-    default:
-      num1 = 5;
-      num2 = 5;
-      answer = 10;
-  }
-
+function createInitialState(level: Level): GameState {
+  const config = LEVEL_CONFIGS[level];
+  const problem = generateMathProblem(config);
   return {
-    question: `${num1} ${operation} ${num2}`,
-    answer,
+    matchScore: freshMatchScore(),
+    server: 'player',
+    currentPlayer: 'player', // server goes first
+    question: problem.question,
+    answer: problem.answer,
+    ballPosition: 'player',
+    isAnimating: false,
+    matchOver: false,
+    winner: null,
+    rallyCount: 0,
   };
 }
 
-export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
-  const [gameState, setGameState] = useState<GameState>(() => {
-    const problem = generateMathProblem();
-    return {
-      currentPlayer: 'opponent',
-      playerScore: 0,
-      opponentScore: 0,
-      playerLives: 3,
-      opponentLives: 3,
-      question: problem.question,
-      answer: problem.answer,
-      ballPosition: 'opponent',
-      isAnimating: false,
-      gameOver: false,
-      winner: null,
-    };
-  });
-
+export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
+  const config = LEVEL_CONFIGS[level];
+  const [gameState, setGameState] = useState<GameState>(() => createInitialState(level));
   const [userAnswer, setUserAnswer] = useState('');
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
 
   const isHuman = mode === 'human';
-  const p1Label = isHuman ? 'P1' : 'Pl';
+  const p1Label = isHuman ? 'P1' : 'You';
   const p2Label = isHuman ? 'P2' : 'AI';
 
-  // AI auto-turn — only active in AI mode
-  useEffect(() => {
-    if (mode !== 'ai') return;
-    if (gameState.currentPlayer === 'opponent' && !gameState.isAnimating && !gameState.gameOver) {
-      const timer = setTimeout(() => {
-        handleOpponentTurn();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [gameState.currentPlayer, gameState.isAnimating, gameState.gameOver, mode]);
+  // --- Point resolution ---
+  const handlePointLost = useCallback((loser: Player) => {
+    setGameState(prev => {
+      if (prev.matchOver) return prev;
 
-  const handleOpponentTurn = () => {
-    const isCorrect = Math.random() < 0.7;
+      const scorer: Player = loser === 'player' ? 'opponent' : 'player';
+      const newGame = scorePoint(prev.matchScore.currentGame, scorer);
 
-    if (isCorrect) {
-      hitBall('opponent', 'player');
-    } else {
-      const newPlayerScore = gameState.playerScore + 1;
-      const newOpponentLives = gameState.opponentLives - 1;
+      if (newGame === null) {
+        // Game won — check match
+        const newMatch = scoreGame(prev.matchScore, scorer);
 
-      if (newOpponentLives <= 0) {
-        setGameState(prev => ({
+        if (newMatch === null) {
+          // Match won
+          return { ...prev, matchOver: true, winner: scorer };
+        }
+
+        // New game — alternate server
+        const totalGames = newMatch.playerGames + newMatch.opponentGames;
+        const newServer = getServer(totalGames);
+        const problem = generateMathProblem(config);
+        return {
           ...prev,
-          playerScore: newPlayerScore,
-          opponentLives: 0,
-          gameOver: true,
-          winner: 'player',
-        }));
-      } else {
-        const problem = generateMathProblem();
-        setGameState(prev => ({
-          ...prev,
-          currentPlayer: 'opponent',
-          playerScore: newPlayerScore,
-          opponentLives: newOpponentLives,
+          matchScore: newMatch,
+          server: newServer,
+          currentPlayer: newServer,
+          ballPosition: newServer,
           question: problem.question,
           answer: problem.answer,
-          ballPosition: 'opponent',
-        }));
+          rallyCount: 0,
+        };
       }
-    }
-  };
 
+      // Point scored but game continues — server starts new rally
+      const problem = generateMathProblem(config);
+      return {
+        ...prev,
+        matchScore: { ...prev.matchScore, currentGame: newGame },
+        currentPlayer: prev.server,
+        ballPosition: prev.server,
+        question: problem.question,
+        answer: problem.answer,
+        rallyCount: 0,
+      };
+    });
+  }, [config]);
+
+  // --- Timer ---
+  const timerIsActive =
+    !gameState.isAnimating &&
+    !gameState.matchOver &&
+    showFeedback === null &&
+    (isHuman || gameState.currentPlayer === 'player');
+
+  const handleTimeUp = useCallback(() => {
+    if (gameState.matchOver || gameState.isAnimating || showFeedback !== null) return;
+    setShowFeedback('wrong');
+    setUserAnswer('');
+    const loser = gameState.currentPlayer;
+    setTimeout(() => {
+      setShowFeedback(null);
+      handlePointLost(loser);
+    }, 500);
+  }, [gameState.matchOver, gameState.isAnimating, gameState.currentPlayer, showFeedback, handlePointLost]);
+
+  const { timeRemaining, resetTimer } = useHitTimer({
+    initialSeconds: config.timerSeconds,
+    onTimeUp: handleTimeUp,
+    isActive: timerIsActive,
+  });
+
+  // --- AI auto-turn ---
+  useEffect(() => {
+    if (mode !== 'ai') return;
+    if (gameState.currentPlayer !== 'opponent' || gameState.isAnimating || gameState.matchOver || showFeedback !== null) return;
+
+    const timer = setTimeout(() => {
+      const isCorrect = Math.random() < config.aiAccuracy;
+      if (isCorrect) {
+        hitBall('opponent', 'player');
+      } else {
+        handlePointLost('opponent');
+      }
+    }, config.aiDelayMs);
+
+    return () => clearTimeout(timer);
+  }, [gameState.currentPlayer, gameState.isAnimating, gameState.matchOver, showFeedback, mode]);
+
+  // --- Ball animation ---
   const hitBall = (from: Player, to: Player) => {
     setGameState(prev => ({ ...prev, isAnimating: true }));
 
     setTimeout(() => {
-      const problem = generateMathProblem();
+      const problem = generateMathProblem(config);
       setGameState(prev => ({
         ...prev,
         currentPlayer: to,
@@ -139,12 +149,15 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
         isAnimating: false,
         question: problem.question,
         answer: problem.answer,
+        rallyCount: prev.rallyCount + 1,
       }));
+      resetTimer();
     }, 800);
   };
 
+  // --- Answer handling ---
   const handleAnswer = () => {
-    if (!userAnswer || gameState.isAnimating || gameState.gameOver) return;
+    if (!userAnswer || gameState.isAnimating || gameState.matchOver) return;
 
     const currentPlayer = gameState.currentPlayer;
     const isCorrect = parseInt(userAnswer) === gameState.answer;
@@ -155,75 +168,21 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
       setUserAnswer('');
 
       if (isCorrect) {
-        if (currentPlayer === 'player') {
-          hitBall('player', 'opponent');
-        } else {
-          hitBall('opponent', 'player');
-        }
+        const to: Player = currentPlayer === 'player' ? 'opponent' : 'player';
+        hitBall(currentPlayer, to);
       } else {
-        // Wrong answer — the other player scores
-        if (currentPlayer === 'player') {
-          const newOpponentScore = gameState.opponentScore + 1;
-          const newPlayerLives = gameState.playerLives - 1;
-
-          if (newPlayerLives <= 0) {
-            setGameState(prev => ({
-              ...prev,
-              opponentScore: newOpponentScore,
-              playerLives: 0,
-              gameOver: true,
-              winner: 'opponent',
-            }));
-          } else {
-            const problem = generateMathProblem();
-            setGameState(prev => ({
-              ...prev,
-              currentPlayer: 'opponent',
-              opponentScore: newOpponentScore,
-              playerLives: newPlayerLives,
-              ballPosition: 'opponent',
-              question: problem.question,
-              answer: problem.answer,
-            }));
-          }
-        } else {
-          // Opponent (P2) got it wrong
-          const newPlayerScore = gameState.playerScore + 1;
-          const newOpponentLives = gameState.opponentLives - 1;
-
-          if (newOpponentLives <= 0) {
-            setGameState(prev => ({
-              ...prev,
-              playerScore: newPlayerScore,
-              opponentLives: 0,
-              gameOver: true,
-              winner: 'player',
-            }));
-          } else {
-            const problem = generateMathProblem();
-            setGameState(prev => ({
-              ...prev,
-              currentPlayer: 'opponent',
-              playerScore: newPlayerScore,
-              opponentLives: newOpponentLives,
-              question: problem.question,
-              answer: problem.answer,
-              ballPosition: 'opponent',
-            }));
-          }
-        }
+        handlePointLost(currentPlayer);
       }
     }, 500);
   };
 
-  // In human mode, both players can use the keypad on their turn
+  // --- Keypad ---
   const isCurrentPlayerTurn = isHuman
-    ? !gameState.isAnimating && showFeedback === null && !gameState.gameOver
-    : gameState.currentPlayer === 'player' && !gameState.isAnimating && showFeedback === null && !gameState.gameOver;
+    ? !gameState.isAnimating && showFeedback === null && !gameState.matchOver
+    : gameState.currentPlayer === 'player' && !gameState.isAnimating && showFeedback === null && !gameState.matchOver;
 
   const handleKeypadPress = (value: string) => {
     if (!isCurrentPlayerTurn) return;
-
     if (value === 'delete') {
       setUserAnswer(prev => prev.slice(0, -1));
     } else if (value === 'enter') {
@@ -233,55 +192,57 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
     }
   };
 
+  // --- Reset ---
   const resetGame = () => {
-    const problem = generateMathProblem();
-    setGameState({
-      currentPlayer: 'opponent',
-      playerScore: 0,
-      opponentScore: 0,
-      playerLives: 3,
-      opponentLives: 3,
-      question: problem.question,
-      answer: problem.answer,
-      ballPosition: 'opponent',
-      isAnimating: false,
-      gameOver: false,
-      winner: null,
-    });
+    setGameState(createInitialState(level));
     setUserAnswer('');
     setShowFeedback(null);
+    resetTimer();
   };
 
+  // --- Ball position ---
   const getBallPosition = () => {
     if (gameState.isAnimating) {
       return gameState.currentPlayer === 'player'
         ? { left: '75%', top: '50%' }
         : { left: '25%', top: '50%' };
     }
-
-    if (gameState.ballPosition === 'opponent') {
-      return { left: '20%', top: '50%' };
-    } else {
-      return { left: '80%', top: '50%' };
-    }
+    return gameState.ballPosition === 'opponent'
+      ? { left: '20%', top: '50%' }
+      : { left: '80%', top: '50%' };
   };
 
+  // --- Status message ---
   const getStatusMessage = () => {
-    if (gameState.gameOver) {
+    if (gameState.matchOver) {
       if (isHuman) {
-        return gameState.winner === 'player' ? 'P1 Wins!' : 'P2 Wins!';
+        return gameState.winner === 'player' ? 'P1 Wins the Match!' : 'P2 Wins the Match!';
       }
-      return gameState.winner === 'player' ? 'You Win!' : 'Game Over!';
+      return gameState.winner === 'player' ? 'You Win the Match!' : 'Game Over!';
     }
     if (isHuman) {
-      return gameState.currentPlayer === 'player'
-        ? "Player 1's turn - solve to hit!"
-        : "Player 2's turn - solve to hit!";
+      const label = gameState.currentPlayer === 'player' ? 'P1' : 'P2';
+      const serving = gameState.currentPlayer === gameState.server ? ' (serving)' : '';
+      return `${label}'s turn${serving} - solve to hit!`;
     }
-    return gameState.currentPlayer === 'player'
-      ? 'Your turn - solve to hit!'
-      : 'Opponent is thinking...';
+    if (gameState.currentPlayer === 'player') {
+      const serving = gameState.server === 'player' ? ' (serving)' : '';
+      return `Your turn${serving} - solve to hit!`;
+    }
+    return 'Opponent is thinking...';
   };
+
+  // --- Score display ---
+  const pointDisplay = formatPointScore(gameState.matchScore.currentGame);
+  const isDeuce = pointDisplay.player === 'DEUCE';
+
+  const TennisBallIcon = () => (
+    <svg className="w-3 h-3 inline-block" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" fill="#FFD700"/>
+      <path d="M 4 8 Q 8 12 4 16" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M 20 8 Q 16 12 20 16" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
+    </svg>
+  );
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-[#1a3a2e] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
@@ -295,39 +256,41 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center justify-center gap-8 mb-2">
+        {/* Row 1: Games score */}
+        <div className="flex items-center justify-center gap-6 mb-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm">{p1Label}</span>
-            <span className="text-3xl font-bold">{gameState.playerScore}</span>
+            {gameState.server === 'player' && <TennisBallIcon />}
+            <span className="text-sm font-medium">{p1Label}</span>
+            <span className="text-3xl font-bold">{gameState.matchScore.playerGames}</span>
           </div>
-          <span className="text-2xl">:</span>
+          <span className="text-2xl text-white/50">-</span>
           <div className="flex items-center gap-2">
-            <span className="text-3xl font-bold">{gameState.opponentScore}</span>
-            <span className="text-sm">{p2Label}</span>
+            <span className="text-3xl font-bold">{gameState.matchScore.opponentGames}</span>
+            <span className="text-sm font-medium">{p2Label}</span>
+            {gameState.server === 'opponent' && <TennisBallIcon />}
           </div>
         </div>
 
-        <div className="flex justify-between items-center text-xs">
-          <div className="flex gap-1">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className={`w-3 h-3 rounded-full ${
-                  i < gameState.playerLives ? 'bg-green-400' : 'bg-gray-600'
-                }`}
-              />
-            ))}
-          </div>
-          <div className="flex gap-1">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className={`w-3 h-3 rounded-full ${
-                  i < gameState.opponentLives ? 'bg-green-400' : 'bg-gray-600'
-                }`}
-              />
-            ))}
-          </div>
+        {/* Row 2: Current game points */}
+        <div className="text-center text-sm text-white/80">
+          {isDeuce ? (
+            <span className="font-bold text-yellow-400">DEUCE</span>
+          ) : (
+            <span>{pointDisplay.player} - {pointDisplay.opponent}</span>
+          )}
+        </div>
+
+        {/* Row 3: Timer */}
+        <div className="text-center mt-1">
+          <span
+            className={`text-lg font-mono font-bold ${
+              timeRemaining <= 3
+                ? 'text-red-400 animate-pulse'
+                : 'text-white/70'
+            }`}
+          >
+            {timeRemaining}s
+          </span>
         </div>
       </div>
 
@@ -338,7 +301,7 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
 
           {/* Tennis Ball */}
           <AnimatePresence>
-            {!gameState.gameOver && (
+            {!gameState.matchOver && (
               <motion.div
                 key={`${gameState.currentPlayer}-${gameState.isAnimating}`}
                 className="absolute z-20"
@@ -380,7 +343,7 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
 
       {/* Status Message */}
       <div className="text-center text-white py-1 text-sm">
-        {gameState.gameOver ? (
+        {gameState.matchOver ? (
           <span className="text-yellow-400 font-bold">{getStatusMessage()}</span>
         ) : gameState.currentPlayer === 'player' || isHuman ? (
           <span>{getStatusMessage()}</span>
@@ -405,7 +368,10 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
               onClick={() => setUserAnswer('')}
               className="ml-2 w-10 h-10 rounded-full bg-[#244a35] hover:bg-[#2d5940] flex items-center justify-center"
             >
-              <X className="w-6 h-6 text-white" />
+              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           )}
         </div>
@@ -417,13 +383,18 @@ export function MathTennisGame({ mode, onBack }: MathTennisGameProps) {
               showFeedback === 'correct' ? 'text-green-600' : 'text-red-600'
             }`}
           >
-            {showFeedback === 'correct' ? '✓ Correct!' : '✗ Wrong!'}
+            {showFeedback === 'correct' ? 'Correct!' : 'Wrong!'}
           </motion.div>
         )}
-        {gameState.gameOver && (
-          <Button onClick={resetGame} className="mt-4 bg-green-600 hover:bg-green-700 text-white px-8 py-2">
-            Play Again
-          </Button>
+        {gameState.matchOver && (
+          <div className="flex gap-3 justify-center mt-4">
+            <Button onClick={resetGame} className="bg-green-600 hover:bg-green-700 text-white px-8 py-2">
+              Play Again
+            </Button>
+            <Button onClick={onBack} className="bg-white/10 hover:bg-white/20 text-white px-8 py-2">
+              Back
+            </Button>
+          </div>
         )}
       </div>
 
