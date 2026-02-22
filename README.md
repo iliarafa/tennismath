@@ -6,6 +6,7 @@ A mobile math game where you solve arithmetic problems to rally a tennis ball. A
 
 - **vs AI** — Solo play against a computer opponent with configurable difficulty
 - **vs Human** — Local 2-player on the same device, taking turns at the keypad
+- **Online** — Real-time 1v1 multiplayer. One player creates a room and shares a 6-character code, the other joins. Server-authoritative — no cheating.
 
 ## Difficulty Levels
 
@@ -22,12 +23,14 @@ A mobile math game where you solve arithmetic problems to rally a tennis ball. A
 - Motion (animation)
 - Capacitor (iOS)
 - Vite
+- Node.js + Socket.IO (multiplayer server)
 
 ## Getting Started
 
 ```bash
 npm install
-npm run dev
+npm run dev          # client only (vs AI / vs Human)
+npm run dev:all      # client + multiplayer server
 ```
 
 ## iOS Build
