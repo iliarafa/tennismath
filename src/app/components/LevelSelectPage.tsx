@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 
@@ -39,13 +39,9 @@ function TennisBall() {
 
 export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps) {
   const [selected, setSelected] = useState<Level | null>(null);
-  const navigatingRef = useRef(false);
 
   const handleSelect = (level: Level) => {
-    if (navigatingRef.current) return;
-    navigatingRef.current = true;
     setSelected(level);
-    setTimeout(() => onSelectLevel(level), 300);
   };
 
   return (
@@ -60,13 +56,13 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
         </svg>
       </button>
 
-      {/* Title */}
-      <h1 className="text-5xl font-bold text-white tracking-tight">
-        Select Level
-      </h1>
+      {/* Title + Level Buttons */}
+      <div className="flex flex-col items-center gap-12 w-full max-w-xs">
+        <h1 className="text-5xl font-bold text-white tracking-tight">
+          Select Level
+        </h1>
 
-      {/* Level Buttons */}
-      <div className="flex flex-col gap-4 w-full max-w-xs">
+        <div className="flex flex-col gap-4 w-full">
         {levels.map((level) => (
           <Button
             key={level.id}
@@ -90,6 +86,26 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
             {level.label}
           </Button>
         ))}
+        </div>
+
+        <AnimatePresence>
+          {selected && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="w-full"
+            >
+              <Button
+                onClick={() => onSelectLevel(selected)}
+                className="w-full py-4 text-xl font-bold rounded-xl bg-white hover:bg-gray-100 text-[#1a3a2e]"
+              >
+                Go to Court
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
