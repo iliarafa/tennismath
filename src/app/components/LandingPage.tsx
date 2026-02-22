@@ -1,8 +1,9 @@
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
+import type { GameMode } from '../game/types';
 
 interface LandingPageProps {
-  onSelectMode: (mode: 'ai' | 'human') => void;
+  onSelectMode: (mode: GameMode) => void;
 }
 
 export function LandingPage({ onSelectMode }: LandingPageProps) {
@@ -50,6 +51,12 @@ export function LandingPage({ onSelectMode }: LandingPageProps) {
           className="w-full py-4 text-xl font-bold bg-yellow-500 hover:bg-yellow-600 text-[#1a3a2e] rounded-xl"
         >
           vs Human
+        </Button>
+        <Button
+          onClick={() => onSelectMode('online')}
+          className="w-full py-4 text-xl font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-xl"
+        >
+          Online
         </Button>
       </div>
     </div>
