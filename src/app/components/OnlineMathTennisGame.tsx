@@ -375,44 +375,56 @@ export function OnlineMathTennisGame({
       </div>
 
       {/* Answer Display */}
-      <div className="bg-[#0f2419] text-center py-3">
+      <div className="bg-[#0f2419] text-center py-3 relative">
         <div className="flex items-center justify-center gap-2">
           <span className="text-3xl font-bold text-white">
             {userAnswer || '_'}
           </span>
-          {userAnswer && (
-            <button
-              onClick={() => setUserAnswer('')}
-              className="ml-2 w-10 h-10 rounded-full bg-[#244a35] hover:bg-[#2d5940] flex items-center justify-center"
-            >
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
-        </div>
-        {showFeedback && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`mt-2 font-bold text-xl ${
-              showFeedback === 'correct' ? 'text-green-600' : 'text-red-600'
+          <button
+            onClick={() => setUserAnswer('')}
+            className={`ml-2 w-10 h-10 rounded-full bg-[#244a35] hover:bg-[#2d5940] flex items-center justify-center transition-opacity ${
+              userAnswer ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
           >
-            {showFeedback === 'correct' ? 'Correct!' : 'Wrong!'}
-          </motion.div>
-        )}
-        {gameState.matchOver && (
-          <div className="flex gap-3 justify-center mt-4">
-            <Button
-              onClick={onBack}
-              className="bg-white/10 hover:bg-white/20 text-white px-8 py-2"
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <AnimatePresence>
+          {showFeedback && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className={`absolute inset-x-0 top-1 font-bold text-xl ${
+                showFeedback === 'correct' ? 'text-green-600' : 'text-red-600'
+              }`}
             >
-              Back to Lobby
-            </Button>
-          </div>
-        )}
+              {showFeedback === 'correct' ? 'Correct!' : 'Wrong!'}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {gameState.matchOver && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="flex gap-3 justify-center mt-4">
+                <Button
+                  onClick={onBack}
+                  className="bg-white/10 hover:bg-white/20 text-white px-8 py-2"
+                >
+                  Back to Lobby
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Keypad */}
