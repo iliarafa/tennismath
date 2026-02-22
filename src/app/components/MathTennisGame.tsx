@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
@@ -38,11 +38,49 @@ function createInitialState(level: Level): GameState {
   };
 }
 
+function generateWrongAnswer(correctAnswer: number): number {
+  const strategies: (() => number)[] = [
+    // Off by 1-3
+    () => correctAnswer + (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1),
+    // Off by 4-10
+    () => correctAnswer + (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * 7) + 4),
+  ];
+
+  // Digit transposition for answers >= 10
+  if (correctAnswer >= 10) {
+    strategies.push(() => {
+      const digits = String(correctAnswer).split('');
+      const i = Math.floor(Math.random() * (digits.length - 1));
+      [digits[i], digits[i + 1]] = [digits[i + 1], digits[i]];
+      return parseInt(digits.join(''), 10);
+    });
+  }
+
+  let result: number;
+  let attempts = 0;
+  do {
+    const strategy = strategies[Math.floor(Math.random() * strategies.length)];
+    result = strategy();
+    attempts++;
+  } while ((result < 0 || result === correctAnswer) && attempts < 20);
+
+  // Fallback: just add 1
+  if (result < 0 || result === correctAnswer) {
+    result = correctAnswer + 1;
+  }
+
+  return result;
+}
+
 export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
   const config = LEVEL_CONFIGS[level];
   const [gameState, setGameState] = useState<GameState>(() => createInitialState(level));
   const [userAnswer, setUserAnswer] = useState('');
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [aiDisplayAnswer, setAiDisplayAnswer] = useState('');
+  const aiTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const showFeedbackRef = useRef(showFeedback);
+  showFeedbackRef.current = showFeedback;
 
   const isHuman = mode === 'human';
   const p1Label = isHuman ? 'P1' : 'You';
@@ -119,22 +157,64 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
     isActive: timerIsActive,
   });
 
+  // --- AI timer cleanup ---
+  const clearAiTimers = useCallback(() => {
+    aiTimersRef.current.forEach(t => clearTimeout(t));
+    aiTimersRef.current = [];
+    setAiDisplayAnswer('');
+  }, []);
+
   // --- AI auto-turn ---
   useEffect(() => {
     if (mode !== 'ai') return;
-    if (gameState.currentPlayer !== 'opponent' || gameState.isAnimating || gameState.matchOver || showFeedback !== null) return;
+    if (gameState.currentPlayer !== 'opponent' || gameState.isAnimating || gameState.matchOver || showFeedbackRef.current !== null) return;
 
-    const timer = setTimeout(() => {
-      const isCorrect = Math.random() < config.aiAccuracy;
-      if (isCorrect) {
-        hitBall('opponent', 'player');
-      } else {
-        handlePointLost('opponent');
-      }
-    }, config.aiDelayMs);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const aiDelayMs = config.aiDelayMs;
 
-    return () => clearTimeout(timer);
-  }, [gameState.currentPlayer, gameState.isAnimating, gameState.matchOver, showFeedback, mode]);
+    // Decide outcome upfront
+    const isCorrect = Math.random() < config.aiAccuracy;
+    const answerNum = isCorrect ? gameState.answer : generateWrongAnswer(gameState.answer);
+    const answerStr = String(answerNum);
+
+    const thinkingMs = aiDelayMs * 0.4;
+    const typingMs = aiDelayMs * 0.5;
+    const perDigitMs = typingMs / answerStr.length;
+    const postTypeMs = aiDelayMs * 0.1;
+
+    // Phase 1: Thinking — display stays as '_'
+    // Phase 2: Type digits one by one
+    for (let i = 0; i < answerStr.length; i++) {
+      const t = setTimeout(() => {
+        setAiDisplayAnswer(answerStr.slice(0, i + 1));
+      }, thinkingMs + perDigitMs * i);
+      timers.push(t);
+    }
+
+    // Phase 3: Post-type pause, then show feedback
+    const feedbackTimer = setTimeout(() => {
+      setShowFeedback(isCorrect ? 'correct' : 'wrong');
+
+      // Phase 4: Resolve point after feedback
+      const resolveTimer = setTimeout(() => {
+        setShowFeedback(null);
+        setAiDisplayAnswer('');
+        if (isCorrect) {
+          hitBall('opponent', 'player');
+        } else {
+          handlePointLost('opponent');
+        }
+      }, 500);
+      aiTimersRef.current.push(resolveTimer);
+    }, thinkingMs + typingMs + postTypeMs);
+    timers.push(feedbackTimer);
+
+    aiTimersRef.current = timers;
+
+    return () => {
+      clearAiTimers();
+    };
+  }, [gameState.currentPlayer, gameState.isAnimating, gameState.matchOver, gameState.answer, mode]);
 
   // --- Ball animation ---
   const hitBall = (from: Player, to: Player) => {
@@ -194,6 +274,7 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
 
   // --- Reset ---
   const resetGame = () => {
+    clearAiTimers();
     setGameState(createInitialState(level));
     setUserAnswer('');
     setShowFeedback(null);
@@ -361,19 +442,23 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
       <div className="bg-[#0f2419] text-center py-3 relative">
         <div className="flex items-center justify-center gap-2">
           <span className="text-3xl font-bold text-white">
-            {userAnswer || '_'}
+            {mode === 'ai' && gameState.currentPlayer === 'opponent'
+              ? (aiDisplayAnswer || '_')
+              : (userAnswer || '_')}
           </span>
-          <button
-            onClick={() => setUserAnswer('')}
-            className={`ml-2 w-10 h-10 rounded-full bg-[#244a35] hover:bg-[#2d5940] flex items-center justify-center transition-opacity ${
-              userAnswer ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+          {!(mode === 'ai' && gameState.currentPlayer === 'opponent') && (
+            <button
+              onClick={() => setUserAnswer('')}
+              className={`ml-2 w-10 h-10 rounded-full bg-[#244a35] hover:bg-[#2d5940] flex items-center justify-center transition-opacity ${
+                userAnswer ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
         <AnimatePresence>
           {showFeedback && (
