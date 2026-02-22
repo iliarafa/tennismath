@@ -21,11 +21,23 @@ Build and run in Xcode with Cmd+R. The Capacitor config lives in `capacitor.conf
 
 ## Architecture
 
-Single-page React 18 app wrapped with Capacitor for iOS. No routing — the entire game is one screen.
+Single-page React 18 app wrapped with Capacitor for iOS. No routing library — screen navigation is managed via a `screen` state in `src/app/App.tsx`.
 
-**Core game component**: `src/app/components/MathTennisGame.tsx` contains all game state and logic in a single component using React hooks (`useState` + `useEffect`). The `GameState` interface holds scores, lives, current player, ball position, question/answer, and animation flags.
+**Screens & navigation** (`src/app/App.tsx`):
+- `landing` — Mode selection (vs AI / vs Human)
+- `level-select` — Difficulty picker (Amateur / Pro / World Class)
+- `human-lobby` — Pre-game lobby for local 2-player
+- `game` — The match itself
 
-**Game loop**: Player solves math → ball animates to opponent → AI answers (70% accuracy, 2s delay) → ball returns → repeat. 3 lives each. Fixed timings: 800ms ball travel, 500ms feedback display.
+Flow: **vs AI**: Landing → Level Select → Game. **vs Human**: Landing → Human Lobby → Level Select → Game. Back button reverses each flow.
+
+**Core game component**: `src/app/components/MathTennisGame.tsx` contains all game state and logic in a single component using React hooks (`useState` + `useEffect`). Accepts `mode` (ai/human), `level`, and `onBack` props.
+
+**Game loop**: Player solves math → ball animates to opponent → opponent answers (AI auto-answers; human uses same keypad) → ball returns → repeat. Tennis scoring (love/15/30/40/deuce/advantage), first to win 3 games takes the match.
+
+**Levels** (`src/app/game/levels.ts`): Three difficulty tiers control number ranges, timer duration, AI accuracy, and AI delay. Timer counts down each turn; running out loses the point.
+
+**Scoring** (`src/app/game/scoring.ts`): Real tennis scoring with deuce/advantage. `GAMES_TO_WIN = 3`. Server alternates each game.
 
 **Tennis court**: SVG-based, rendered by `TennisCourtHorizontal.tsx`. Ball animation uses the `motion` library with `AnimatePresence`.
 

@@ -14,16 +14,16 @@ export default function App() {
 
   const handleSelectMode = (selectedMode: GameMode) => {
     setMode(selectedMode);
-    setScreen('level-select');
+    if (selectedMode === 'human') {
+      setScreen('human-lobby');
+    } else {
+      setScreen('level-select');
+    }
   };
 
   const handleSelectLevel = (selectedLevel: Level) => {
     setLevel(selectedLevel);
-    if (mode === 'ai') {
-      setScreen('game');
-    } else {
-      setScreen('human-lobby');
-    }
+    setScreen('game');
   };
 
   const handleBack = () => {
@@ -31,10 +31,10 @@ export default function App() {
       case 'game':
         setScreen('level-select');
         break;
-      case 'human-lobby':
-        setScreen('level-select');
-        break;
       case 'level-select':
+        setScreen(mode === 'human' ? 'human-lobby' : 'landing');
+        break;
+      case 'human-lobby':
         setScreen('landing');
         break;
       default:
@@ -57,7 +57,7 @@ export default function App() {
         {screen === 'human-lobby' && (
           <HumanLobbyPage
             onBack={handleBack}
-            onStartGame={() => setScreen('game')}
+            onStartGame={() => setScreen('level-select')}
           />
         )}
         {screen === 'game' && (
