@@ -10,11 +10,11 @@ interface LevelSelectPageProps {
 }
 
 const levels: { id: Level; label: string; className: string }[] = [
-  { id: 'amateur', label: 'Amateur', className: 'bg-green-600 hover:bg-green-700 text-white' },
-  { id: 'pro', label: 'Pro', className: 'bg-yellow-500 hover:bg-yellow-600 text-[#1a3a2e]' },
-  { id: 'world-class', label: 'World Class', className: 'bg-orange-500 hover:bg-orange-600 text-white' },
-  { id: 'elite', label: 'Elite', className: 'bg-red-600 hover:bg-red-700 text-white' },
-  { id: 'legend', label: 'Legend', className: 'bg-purple-600 hover:bg-purple-700 text-white' },
+  { id: 'amateur', label: 'Amateur', className: 'bg-[#2d5940] hover:bg-[#3a6b50] text-white' },
+  { id: 'pro', label: 'Pro', className: 'bg-[#3A8B4F] hover:bg-[#449959] text-white' },
+  { id: 'world-class', label: 'World Class', className: 'bg-[#4CAF50] hover:bg-[#5CB860] text-white' },
+  { id: 'elite', label: 'Elite', className: 'bg-[#66BB6A] hover:bg-[#76C47A] text-[#1a3a2e]' },
+  { id: 'legend', label: 'Legend', className: 'bg-[#FFD700] hover:bg-[#FFE033] text-[#1a3a2e]' },
 ];
 
 function TennisBall() {
