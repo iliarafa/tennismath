@@ -17,9 +17,9 @@ const levels: { id: Level; label: string; className: string }[] = [
   { id: 'legend', label: 'Legend', className: 'bg-[#FFD700] hover:bg-[#FFE033] text-[#1a3a2e]' },
 ];
 
-function TennisBall() {
+function TennisBall({ className = 'w-8 h-8' }: { className?: string }) {
   return (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none">
+    <svg className={className} viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="10" fill="#FFD700" />
       <path
         d="M 4 8 Q 8 12 4 16"
@@ -69,7 +69,7 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
           <Button
             key={level.id}
             onClick={() => handleSelect(level.id)}
-            className={`w-full py-3 text-xl font-bold rounded-xl ${level.className}`}
+            className={`relative w-full py-3 text-xl font-bold rounded-xl ${level.className}`}
           >
             <AnimatePresence>
               {selected === level.id && (
@@ -79,7 +79,7 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
                   transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                  className="inline-flex"
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
                 >
                   <TennisBall />
                 </motion.span>
@@ -90,24 +90,18 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
         ))}
         </div>
 
-        <AnimatePresence>
-          {selected && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 12 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="w-full"
-            >
-              <Button
-                onClick={() => onSelectLevel(selected)}
-                className="w-full py-4 text-xl font-bold rounded-xl bg-white hover:bg-gray-100 text-[#1a3a2e]"
-              >
-                Go to Court
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div
+          animate={{ opacity: selected ? 1 : 0 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+          className={`flex justify-center ${selected ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        >
+          <button
+            onClick={() => selected && onSelectLevel(selected)}
+            className="focus:outline-none active:scale-90 transition-transform"
+          >
+            <TennisBall className="w-14 h-14" />
+          </button>
+        </motion.div>
       </div>
     </div>
   );
