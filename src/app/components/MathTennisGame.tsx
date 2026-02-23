@@ -94,12 +94,20 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
   const showFeedbackRef = useRef(showFeedback);
   showFeedbackRef.current = showFeedback;
 
+  // Streak tracking for AI mode
+  const correctStreakRef = useRef(0);
+  const wrongStreakRef = useRef(0);
+  const forceBotMissRef = useRef(false);
+
   const isHuman = mode === 'human';
   const p1Label = isHuman ? 'P1' : 'You';
   const p2Label = isHuman ? 'P2' : 'AI';
 
   // --- Point resolution ---
   const handlePointLost = useCallback((loser: Player) => {
+    correctStreakRef.current = 0;
+    wrongStreakRef.current = 0;
+    forceBotMissRef.current = false;
     setGameState(prev => {
       if (prev.matchOver) return prev;
 
@@ -154,14 +162,34 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
 
   const handleTimeUp = useCallback(() => {
     if (gameState.matchOver || gameState.isAnimating || showFeedback !== null) return;
+
+    wrongStreakRef.current += 1;
+    correctStreakRef.current = 0;
+
     setShowFeedback('wrong');
     setUserAnswer('');
-    const loser = gameState.currentPlayer;
-    setTimeout(() => {
-      setShowFeedback(null);
-      handlePointLost(loser);
-    }, 500);
-  }, [gameState.matchOver, gameState.isAnimating, gameState.currentPlayer, showFeedback, handlePointLost]);
+
+    if (wrongStreakRef.current >= 3) {
+      const loser = gameState.currentPlayer;
+      setTimeout(() => {
+        setShowFeedback(null);
+        handlePointLost(loser);
+      }, 500);
+    } else {
+      setTimeout(() => {
+        setShowFeedback(null);
+        setGameState(prev => {
+          const scaled = getScaledConfig(config, prev);
+          const problem = generateMathProblem(scaled);
+          return {
+            ...prev,
+            question: problem.question,
+            answer: problem.answer,
+          };
+        });
+      }, 500);
+    }
+  }, [gameState.matchOver, gameState.isAnimating, gameState.currentPlayer, showFeedback, handlePointLost, config]);
 
   const scaledConfig = getScaledConfig(config, gameState);
 
@@ -186,8 +214,11 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
     const timers: ReturnType<typeof setTimeout>[] = [];
     const aiDelayMs = scaledConfig.aiDelayMs;
 
-    // Decide outcome upfront
-    const isCorrect = Math.random() < scaledConfig.aiAccuracy;
+    // Decide outcome: miss only when forced by player streak
+    const isCorrect = !forceBotMissRef.current;
+    if (forceBotMissRef.current) {
+      forceBotMissRef.current = false;
+    }
     const answerNum = isCorrect ? gameState.answer : generateWrongAnswer(gameState.answer);
     const answerStr = String(answerNum);
 
@@ -266,10 +297,33 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
       setUserAnswer('');
 
       if (isCorrect) {
+        correctStreakRef.current += 1;
+        wrongStreakRef.current = 0;
+
+        if (mode === 'ai' && currentPlayer === 'player' && correctStreakRef.current >= 5) {
+          forceBotMissRef.current = true;
+        }
+
         const to: Player = currentPlayer === 'player' ? 'opponent' : 'player';
         hitBall(currentPlayer, to);
       } else {
-        handlePointLost(currentPlayer);
+        wrongStreakRef.current += 1;
+        correctStreakRef.current = 0;
+
+        if (wrongStreakRef.current >= 3) {
+          handlePointLost(currentPlayer);
+        } else {
+          // Not enough wrong answers to lose point — new question, same side
+          setGameState(prev => {
+            const scaled = getScaledConfig(config, prev);
+            const problem = generateMathProblem(scaled);
+            return {
+              ...prev,
+              question: problem.question,
+              answer: problem.answer,
+            };
+          });
+        }
       }
     }, 500);
   };
@@ -293,6 +347,9 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
   // --- Reset ---
   const resetGame = () => {
     clearAiTimers();
+    correctStreakRef.current = 0;
+    wrongStreakRef.current = 0;
+    forceBotMissRef.current = false;
     setGameState(createInitialState(level));
     setUserAnswer('');
     setShowFeedback(null);
