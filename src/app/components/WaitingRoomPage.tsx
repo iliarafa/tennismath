@@ -1,4 +1,3 @@
-import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import type { Level } from '../game/types';
 
@@ -12,12 +11,12 @@ interface WaitingRoomPageProps {
   onBack: () => void;
 }
 
-const LEVELS: { value: Level; label: string }[] = [
-  { value: 'amateur', label: 'Amateur' },
-  { value: 'pro', label: 'Pro' },
-  { value: 'world-class', label: 'World Class' },
-  { value: 'elite', label: 'Elite' },
-  { value: 'legend', label: 'Legend' },
+const LEVELS: { value: Level; label: string; className: string }[] = [
+  { value: 'amateur', label: 'Amateur', className: 'bg-[#2d5940] hover:bg-[#3a6b50] text-white' },
+  { value: 'pro', label: 'Pro', className: 'bg-[#3A8B4F] hover:bg-[#449959] text-white' },
+  { value: 'world-class', label: 'World Class', className: 'bg-[#4CAF50] hover:bg-[#5CB860] text-white' },
+  { value: 'elite', label: 'Elite', className: 'bg-[#66BB6A] hover:bg-[#76C47A] text-[#1a3a2e]' },
+  { value: 'legend', label: 'Legend', className: 'bg-[#FFD700] hover:bg-[#FFE033] text-[#1a3a2e]' },
 ];
 
 export function WaitingRoomPage({
@@ -33,9 +32,11 @@ export function WaitingRoomPage({
     <div className="h-full w-full flex flex-col items-center justify-center bg-[#1a3a2e] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] px-8 gap-6">
       <button
         onClick={onBack}
-        className="absolute left-4 top-4 mt-[env(safe-area-inset-top)] w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+        className="absolute top-4 left-4 mt-[env(safe-area-inset-top)] text-white p-2"
       >
-        <ArrowLeft className="w-6 h-6" />
+        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
       </button>
 
       <h2 className="text-2xl font-bold text-white">Waiting Room</h2>
@@ -77,14 +78,12 @@ export function WaitingRoomPage({
         <div className="w-full max-w-xs flex flex-col gap-3">
           <span className="text-white/70 text-sm text-center">Pick difficulty</span>
           <div className="flex flex-col gap-2">
-            {LEVELS.map(({ value, label }) => (
+            {LEVELS.map(({ value, label, className }) => (
               <Button
                 key={value}
                 onClick={() => onSelectLevel(value)}
-                className={`w-full py-3 text-lg font-bold rounded-xl ${
-                  selectedLevel === value
-                    ? 'bg-yellow-500 text-[#1a3a2e]'
-                    : 'bg-white/10 hover:bg-white/20 text-white'
+                className={`w-full py-3 text-lg font-bold rounded-xl ${className} ${
+                  selectedLevel === value ? 'ring-2 ring-white' : ''
                 }`}
               >
                 {label}

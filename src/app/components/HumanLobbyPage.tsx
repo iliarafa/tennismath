@@ -27,7 +27,7 @@ export function HumanLobbyPage({ onBack, onStartGame }: HumanLobbyPageProps) {
       <div className="flex flex-col gap-4 w-full max-w-xs">
         <Button
           onClick={onStartGame}
-          className="w-full py-4 text-xl font-bold rounded-xl bg-green-600 hover:bg-green-700 text-white"
+          className="w-full py-4 text-xl font-bold rounded-xl bg-white hover:bg-gray-100 text-[#1a3a2e]"
         >
           Start Local Game
         </Button>

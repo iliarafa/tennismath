@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface NameEntryPageProps {
@@ -21,9 +20,11 @@ export function NameEntryPage({ onSubmit, onBack }: NameEntryPageProps) {
     <div className="h-full w-full flex flex-col items-center justify-center bg-[#1a3a2e] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] px-8 gap-8">
       <button
         onClick={onBack}
-        className="absolute left-4 top-4 mt-[env(safe-area-inset-top)] w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+        className="absolute top-4 left-4 mt-[env(safe-area-inset-top)] text-white p-2"
       >
-        <ArrowLeft className="w-6 h-6" />
+        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
       </button>
 
       <h2 className="text-3xl font-bold text-white">Enter Your Name</h2>
@@ -42,7 +43,7 @@ export function NameEntryPage({ onSubmit, onBack }: NameEntryPageProps) {
       <Button
         onClick={handleSubmit}
         disabled={name.trim().length < 1}
-        className="w-full max-w-xs py-4 text-xl font-bold bg-green-600 hover:bg-green-700 text-white rounded-xl disabled:opacity-40"
+        className="w-full max-w-xs py-4 text-xl font-bold bg-white hover:bg-gray-100 text-[#1a3a2e] rounded-xl disabled:opacity-40"
       >
         Continue
       </Button>
