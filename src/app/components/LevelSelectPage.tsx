@@ -91,6 +91,7 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
         </div>
 
         <motion.div
+          initial={{ opacity: 0 }}
           animate={{ opacity: selected ? 1 : 0 }}
           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           className={`flex justify-center ${selected ? 'pointer-events-auto' : 'pointer-events-none'}`}
