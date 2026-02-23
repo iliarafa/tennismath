@@ -10,7 +10,7 @@ export const LEVEL_CONFIGS: Record<Level, LevelConfig> = {
     division: null,
     multiStep: null,
     timerSeconds: 15,
-    aiAccuracy: 0.5,
+    aiAccuracy: 0.75,
     aiDelayMs: 3000,
   },
   pro: {
@@ -20,7 +20,7 @@ export const LEVEL_CONFIGS: Record<Level, LevelConfig> = {
     division: null,
     multiStep: null,
     timerSeconds: 10,
-    aiAccuracy: 0.7,
+    aiAccuracy: 0.85,
     aiDelayMs: 2000,
   },
   'world-class': {
@@ -30,7 +30,7 @@ export const LEVEL_CONFIGS: Record<Level, LevelConfig> = {
     division: { minDivisor: 2, maxDivisor: 10, minAnswer: 2, maxAnswer: 12 },
     multiStep: null,
     timerSeconds: 7,
-    aiAccuracy: 0.9,
+    aiAccuracy: 0.93,
     aiDelayMs: 1000,
   },
   elite: {
@@ -40,7 +40,7 @@ export const LEVEL_CONFIGS: Record<Level, LevelConfig> = {
     division: { minDivisor: 2, maxDivisor: 12, minAnswer: 2, maxAnswer: 20 },
     multiStep: { enabled: true, operations: ['+', '-', '*'] },
     timerSeconds: 6,
-    aiAccuracy: 0.93,
+    aiAccuracy: 0.95,
     aiDelayMs: 800,
   },
   legend: {
@@ -50,7 +50,7 @@ export const LEVEL_CONFIGS: Record<Level, LevelConfig> = {
     division: { minDivisor: 2, maxDivisor: 15, minAnswer: 3, maxAnswer: 25 },
     multiStep: { enabled: true, operations: ['+', '-', '*'] },
     timerSeconds: 5,
-    aiAccuracy: 0.96,
+    aiAccuracy: 0.97,
     aiDelayMs: 600,
   },
 };
