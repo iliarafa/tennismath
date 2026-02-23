@@ -176,17 +176,12 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
         handlePointLost(loser);
       }, 500);
     } else {
+      const currentPlayer = gameState.currentPlayer;
       setTimeout(() => {
         setShowFeedback(null);
-        setGameState(prev => {
-          const scaled = getScaledConfig(config, prev);
-          const problem = generateMathProblem(scaled);
-          return {
-            ...prev,
-            question: problem.question,
-            answer: problem.answer,
-          };
-        });
+        // Rally continues — ball goes to opponent
+        const to: Player = currentPlayer === 'player' ? 'opponent' : 'player';
+        hitBall(currentPlayer, to);
       }, 500);
     }
   }, [gameState.matchOver, gameState.isAnimating, gameState.currentPlayer, showFeedback, handlePointLost, config]);
@@ -313,16 +308,9 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
         if (wrongStreakRef.current >= 3) {
           handlePointLost(currentPlayer);
         } else {
-          // Not enough wrong answers to lose point — new question, same side
-          setGameState(prev => {
-            const scaled = getScaledConfig(config, prev);
-            const problem = generateMathProblem(scaled);
-            return {
-              ...prev,
-              question: problem.question,
-              answer: problem.answer,
-            };
-          });
+          // Rally continues — ball goes to opponent
+          const to: Player = currentPlayer === 'player' ? 'opponent' : 'player';
+          hitBall(currentPlayer, to);
         }
       }
     }, 500);
