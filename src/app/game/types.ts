@@ -6,6 +6,8 @@ export type {
   GameScore,
   MatchScore,
   LevelConfig,
+  DivisionConfig,
+  MultiStepConfig,
   MathProblem,
   GameState,
 } from '../../../shared/types';

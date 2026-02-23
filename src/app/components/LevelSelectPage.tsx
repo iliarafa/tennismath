@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 
-type Level = 'amateur' | 'pro' | 'world-class';
+import type { Level } from '../game/types';
 
 interface LevelSelectPageProps {
   onSelectLevel: (level: Level) => void;
@@ -13,6 +13,8 @@ const levels: { id: Level; label: string; className: string }[] = [
   { id: 'amateur', label: 'Amateur', className: 'bg-green-600 hover:bg-green-700 text-white' },
   { id: 'pro', label: 'Pro', className: 'bg-yellow-500 hover:bg-yellow-600 text-[#1a3a2e]' },
   { id: 'world-class', label: 'World Class', className: 'bg-orange-500 hover:bg-orange-600 text-white' },
+  { id: 'elite', label: 'Elite', className: 'bg-red-600 hover:bg-red-700 text-white' },
+  { id: 'legend', label: 'Legend', className: 'bg-purple-600 hover:bg-purple-700 text-white' },
 ];
 
 function TennisBall() {
@@ -67,7 +69,7 @@ export function LevelSelectPage({ onSelectLevel, onBack }: LevelSelectPageProps)
           <Button
             key={level.id}
             onClick={() => handleSelect(level.id)}
-            className={`w-full py-4 text-xl font-bold rounded-xl ${level.className}`}
+            className={`w-full py-3 text-xl font-bold rounded-xl ${level.className}`}
           >
             <AnimatePresence>
               {selected === level.id && (

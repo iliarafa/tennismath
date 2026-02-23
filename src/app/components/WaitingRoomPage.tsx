@@ -16,6 +16,8 @@ const LEVELS: { value: Level; label: string }[] = [
   { value: 'amateur', label: 'Amateur' },
   { value: 'pro', label: 'Pro' },
   { value: 'world-class', label: 'World Class' },
+  { value: 'elite', label: 'Elite' },
+  { value: 'legend', label: 'Legend' },
 ];
 
 export function WaitingRoomPage({

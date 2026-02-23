@@ -1,6 +1,8 @@
-import type { Level, MatchScore, MathProblem } from '../../shared/types';
+import type { Level, LevelConfig, MatchScore, MathProblem } from '../../shared/types';
 import { LEVEL_CONFIGS } from '../../shared/levels';
 import { generateMathProblem } from '../../shared/math';
+import { getDifficultyModifier, applyModifier } from '../../shared/scaling';
+import type { DifficultyContext } from '../../shared/scaling';
 import {
   freshMatchScore,
   scorePoint,
@@ -35,20 +37,21 @@ export class GameEngine {
   startGame(room: Room, emit: EmitToPlayer): void {
     if (!room.level || !room.guest) return;
 
-    const config = LEVEL_CONFIGS[room.level];
-    const problem = generateMathProblem(config);
-
     const state: GameRoomState = {
       roomCode: room.code,
       level: room.level,
       matchScore: freshMatchScore(),
       currentTurn: 'host', // host serves first
       server: 'host',
-      currentProblem: problem,
+      currentProblem: { question: '', answer: 0 },
       rallyCount: 0,
       matchOver: false,
       winner: null,
     };
+
+    const scaledConfig = this.getScaledConfig(state);
+    const problem = generateMathProblem(scaledConfig);
+    state.currentProblem = problem;
 
     this.games.set(room.code, state);
     room.gameInProgress = true;
@@ -58,7 +61,7 @@ export class GameEngine {
       question: problem.question,
       yourTurn: true,
       server: 'player' as const,
-      timerSeconds: config.timerSeconds,
+      timerSeconds: scaledConfig.timerSeconds,
     });
 
     // Emit to guest (guest sees host as "opponent")
@@ -66,7 +69,7 @@ export class GameEngine {
       question: problem.question,
       yourTurn: false,
       server: 'opponent' as const,
-      timerSeconds: config.timerSeconds,
+      timerSeconds: scaledConfig.timerSeconds,
     });
 
     // Start timer for current turn
@@ -247,20 +250,20 @@ export class GameEngine {
     state: GameRoomState,
     emit: EmitToPlayer
   ): void {
-    const config = LEVEL_CONFIGS[state.level];
-    const problem = generateMathProblem(config);
+    const scaledConfig = this.getScaledConfig(state);
+    const problem = generateMathProblem(scaledConfig);
     state.currentProblem = problem;
 
     emit(room.host.socketId, 'game:question', {
       question: problem.question,
       yourTurn: state.currentTurn === 'host',
-      timerSeconds: config.timerSeconds,
+      timerSeconds: scaledConfig.timerSeconds,
     });
     if (room.guest) {
       emit(room.guest.socketId, 'game:question', {
         question: problem.question,
         yourTurn: state.currentTurn === 'guest',
-        timerSeconds: config.timerSeconds,
+        timerSeconds: scaledConfig.timerSeconds,
       });
     }
 
@@ -272,10 +275,22 @@ export class GameEngine {
     state: GameRoomState,
     emit: EmitToPlayer
   ): void {
-    const config = LEVEL_CONFIGS[state.level];
-    this.timerManager.start(room.code, config.timerSeconds, () => {
+    const scaledConfig = this.getScaledConfig(state);
+    this.timerManager.start(room.code, scaledConfig.timerSeconds, () => {
       this.handleTimerExpired(room, state, emit);
     });
+  }
+
+  private getScaledConfig(state: GameRoomState): LevelConfig {
+    const baseConfig = LEVEL_CONFIGS[state.level];
+    const ctx: DifficultyContext = {
+      rallyCount: state.rallyCount,
+      // Use absolute game lead so both players face the same difficulty
+      playerGamesLead: Math.abs(
+        state.matchScore.playerGames - state.matchScore.opponentGames
+      ),
+    };
+    return applyModifier(baseConfig, getDifficultyModifier(ctx));
   }
 
   getState(roomCode: string): GameRoomState | undefined {

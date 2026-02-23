@@ -6,6 +6,8 @@ import { TennisCourtHorizontal } from './TennisCourtHorizontal';
 import type { Player, Level, GameState } from '../game/types';
 import { LEVEL_CONFIGS } from '../game/levels';
 import { generateMathProblem } from '../game/math';
+import { getDifficultyModifier, applyModifier } from '../game/scaling';
+import type { DifficultyContext } from '../game/scaling';
 import {
   freshMatchScore,
   scorePoint,
@@ -36,6 +38,15 @@ function createInitialState(level: Level): GameState {
     winner: null,
     rallyCount: 0,
   };
+}
+
+function getScaledConfig(baseConfig: ReturnType<typeof LEVEL_CONFIGS['amateur' & keyof typeof LEVEL_CONFIGS]>, state: GameState) {
+  const ctx: DifficultyContext = {
+    rallyCount: state.rallyCount,
+    playerGamesLead: Math.abs(state.matchScore.playerGames - state.matchScore.opponentGames),
+  };
+  const modifier = getDifficultyModifier(ctx);
+  return applyModifier(baseConfig, modifier);
 }
 
 function generateWrongAnswer(correctAnswer: number): number {
@@ -106,29 +117,29 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
         // New game — alternate server
         const totalGames = newMatch.playerGames + newMatch.opponentGames;
         const newServer = getServer(totalGames);
-        const problem = generateMathProblem(config);
+        const nextState = { ...prev, matchScore: newMatch, rallyCount: 0 };
+        const scaled = getScaledConfig(config, nextState);
+        const problem = generateMathProblem(scaled);
         return {
-          ...prev,
-          matchScore: newMatch,
+          ...nextState,
           server: newServer,
           currentPlayer: newServer,
           ballPosition: newServer,
           question: problem.question,
           answer: problem.answer,
-          rallyCount: 0,
         };
       }
 
       // Point scored but game continues — server starts new rally
-      const problem = generateMathProblem(config);
+      const nextState = { ...prev, matchScore: { ...prev.matchScore, currentGame: newGame }, rallyCount: 0 };
+      const scaled = getScaledConfig(config, nextState);
+      const problem = generateMathProblem(scaled);
       return {
-        ...prev,
-        matchScore: { ...prev.matchScore, currentGame: newGame },
+        ...nextState,
         currentPlayer: prev.server,
         ballPosition: prev.server,
         question: problem.question,
         answer: problem.answer,
-        rallyCount: 0,
       };
     });
   }, [config]);
@@ -151,8 +162,10 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
     }, 500);
   }, [gameState.matchOver, gameState.isAnimating, gameState.currentPlayer, showFeedback, handlePointLost]);
 
+  const scaledConfig = getScaledConfig(config, gameState);
+
   const { timeRemaining, resetTimer } = useHitTimer({
-    initialSeconds: config.timerSeconds,
+    initialSeconds: scaledConfig.timerSeconds,
     onTimeUp: handleTimeUp,
     isActive: timerIsActive,
   });
@@ -170,10 +183,10 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
     if (gameState.currentPlayer !== 'opponent' || gameState.isAnimating || gameState.matchOver || showFeedbackRef.current !== null) return;
 
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const aiDelayMs = config.aiDelayMs;
+    const aiDelayMs = scaledConfig.aiDelayMs;
 
     // Decide outcome upfront
-    const isCorrect = Math.random() < config.aiAccuracy;
+    const isCorrect = Math.random() < scaledConfig.aiAccuracy;
     const answerNum = isCorrect ? gameState.answer : generateWrongAnswer(gameState.answer);
     const answerStr = String(answerNum);
 
@@ -221,16 +234,19 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
     setGameState(prev => ({ ...prev, isAnimating: true }));
 
     setTimeout(() => {
-      const problem = generateMathProblem(config);
-      setGameState(prev => ({
-        ...prev,
-        currentPlayer: to,
-        ballPosition: to,
-        isAnimating: false,
-        question: problem.question,
-        answer: problem.answer,
-        rallyCount: prev.rallyCount + 1,
-      }));
+      setGameState(prev => {
+        const nextState = { ...prev, rallyCount: prev.rallyCount + 1 };
+        const scaled = getScaledConfig(config, nextState);
+        const problem = generateMathProblem(scaled);
+        return {
+          ...nextState,
+          currentPlayer: to,
+          ballPosition: to,
+          isAnimating: false,
+          question: problem.question,
+          answer: problem.answer,
+        };
+      });
       resetTimer();
     }, 800);
   };
