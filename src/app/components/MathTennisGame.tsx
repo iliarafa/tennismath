@@ -499,16 +499,12 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
         </div>
       </div>
 
-      {/* Status Message */}
-      <div className="text-center text-white py-1 text-sm">
-        {gameState.matchOver ? (
+      {/* Status Message — only show when match is over */}
+      {gameState.matchOver && (
+        <div className="text-center text-white py-1 text-sm">
           <span className="text-yellow-400 font-bold">{getStatusMessage()}</span>
-        ) : gameState.currentPlayer === 'player' || isHuman ? (
-          <span>{getStatusMessage()}</span>
-        ) : (
-          <span className="text-gray-400">{getStatusMessage()}</span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Math Problem */}
       <div className="bg-[#1a3a2e] text-white text-center py-2">
