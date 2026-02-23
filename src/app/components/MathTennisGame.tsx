@@ -16,6 +16,7 @@ import {
   formatPointScore,
 } from '../game/scoring';
 import { useHitTimer } from '../game/useHitTimer';
+import { playHitSound } from '../audio/hitSound';
 
 interface MathTennisGameProps {
   mode: 'ai' | 'human';
@@ -254,6 +255,7 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
   // --- Answer handling ---
   const handleAnswer = () => {
     if (!userAnswer || gameState.isAnimating || gameState.matchOver) return;
+    playHitSound();
 
     const currentPlayer = gameState.currentPlayer;
     const isCorrect = parseInt(userAnswer) === gameState.answer;
@@ -483,10 +485,10 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className={`absolute right-4 top-1/2 -translate-y-1/2 font-bold text-xl ${
-                showFeedback === 'correct' ? 'text-green-600' : 'text-red-600'
+                showFeedback === 'correct' ? 'text-green-600' : 'text-white'
               }`}
             >
-              {showFeedback === 'correct' ? 'Correct!' : 'Wrong!'}
+              {showFeedback === 'correct' ? 'Correct!' : 'OUT!'}
             </motion.div>
           )}
         </AnimatePresence>

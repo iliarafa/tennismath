@@ -10,6 +10,7 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
 } from '../../../shared/protocol';
+import { playHitSound } from '../audio/hitSound';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -190,6 +191,7 @@ export function OnlineMathTennisGame({
   // --- Answer handling ---
   const handleAnswer = useCallback(() => {
     if (!userAnswer || !gameState.myTurn || gameState.isAnimating || gameState.matchOver) return;
+    playHitSound();
     socket.emit('game:answer', { answer: parseInt(userAnswer) });
     setUserAnswer('');
   }, [userAnswer, gameState.myTurn, gameState.isAnimating, gameState.matchOver, socket]);
@@ -399,10 +401,10 @@ export function OnlineMathTennisGame({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className={`absolute right-4 top-1/2 -translate-y-1/2 font-bold text-xl ${
-                showFeedback === 'correct' ? 'text-green-600' : 'text-red-600'
+                showFeedback === 'correct' ? 'text-green-600' : 'text-white'
               }`}
             >
-              {showFeedback === 'correct' ? 'Correct!' : 'Wrong!'}
+              {showFeedback === 'correct' ? 'Correct!' : 'OUT!'}
             </motion.div>
           )}
         </AnimatePresence>
