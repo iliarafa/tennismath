@@ -270,34 +270,30 @@ export function OnlineMathTennisGame({
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        {/* Row 1: Games score */}
+        {/* Row 1: Current game points */}
         <div className="flex items-center justify-center gap-6 mb-1">
-          <div className="flex items-center gap-2">
-            {gameState.server === 'player' && <TennisBallIcon />}
-            <span className="text-sm font-medium">{playerName}</span>
-            <span className="text-3xl font-bold">
-              {gameState.matchScore.playerGames}
-            </span>
-          </div>
-          <span className="text-2xl text-white/50">-</span>
-          <div className="flex items-center gap-2">
-            <span className="text-3xl font-bold">
-              {gameState.matchScore.opponentGames}
-            </span>
-            <span className="text-sm font-medium">{opponentName}</span>
-            {gameState.server === 'opponent' && <TennisBallIcon />}
-          </div>
+          {isDeuce ? (
+            <span className="text-3xl font-bold text-yellow-400">DEUCE</span>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                {gameState.server === 'player' && <TennisBallIcon />}
+                <span className="text-sm font-medium">{playerName}</span>
+                <span className="text-3xl font-bold">{pointDisplay.player}</span>
+              </div>
+              <span className="text-2xl text-white/50">-</span>
+              <div className="flex items-center gap-2">
+                <span className="text-3xl font-bold">{pointDisplay.opponent}</span>
+                <span className="text-sm font-medium">{opponentName}</span>
+                {gameState.server === 'opponent' && <TennisBallIcon />}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Row 2: Current game points */}
+        {/* Row 2: Games score */}
         <div className="text-center text-sm text-white/80">
-          {isDeuce ? (
-            <span className="font-bold text-yellow-400">DEUCE</span>
-          ) : (
-            <span>
-              {pointDisplay.player} - {pointDisplay.opponent}
-            </span>
-          )}
+          <span>Games: {gameState.matchScore.playerGames} - {gameState.matchScore.opponentGames}</span>
         </div>
 
         {/* Row 3: Timer */}
