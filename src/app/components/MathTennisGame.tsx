@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import { TennisCourtHorizontal } from './TennisCourtHorizontal';
-import type { Player, Level, GameState } from '../game/types';
+import type { Player, Level, GameState, MathProblem } from '../game/types';
 import { LEVEL_CONFIGS } from '../game/levels';
-import { generateMathProblem } from '../game/math';
+import { generateMathProblem, generateMathProblemPair } from '../game/math';
 import { getDifficultyModifier, applyModifier } from '../game/scaling';
 import type { DifficultyContext } from '../game/scaling';
 import {
@@ -26,18 +26,19 @@ interface MathTennisGameProps {
 
 function createInitialState(level: Level): GameState {
   const config = LEVEL_CONFIGS[level];
-  const problem = generateMathProblem(config);
+  const [first, second] = generateMathProblemPair(config);
   return {
     matchScore: freshMatchScore(),
     server: 'player',
     currentPlayer: 'player', // server goes first
-    question: problem.question,
-    answer: problem.answer,
+    question: first.question,
+    answer: first.answer,
     ballPosition: 'player',
     isAnimating: false,
     matchOver: false,
     winner: null,
     rallyCount: 0,
+    nextProblem: second,
   };
 }
 
@@ -128,27 +129,29 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
         const newServer = getServer(totalGames);
         const nextState = { ...prev, matchScore: newMatch, rallyCount: 0 };
         const scaled = getScaledConfig(config, nextState);
-        const problem = generateMathProblem(scaled);
+        const [first, second] = generateMathProblemPair(scaled);
         return {
           ...nextState,
           server: newServer,
           currentPlayer: newServer,
           ballPosition: newServer,
-          question: problem.question,
-          answer: problem.answer,
+          question: first.question,
+          answer: first.answer,
+          nextProblem: second,
         };
       }
 
       // Point scored but game continues — server starts new rally
       const nextState = { ...prev, matchScore: { ...prev.matchScore, currentGame: newGame }, rallyCount: 0 };
       const scaled = getScaledConfig(config, nextState);
-      const problem = generateMathProblem(scaled);
+      const [first, second] = generateMathProblemPair(scaled);
       return {
         ...nextState,
         currentPlayer: prev.server,
         ballPosition: prev.server,
-        question: problem.question,
-        answer: problem.answer,
+        question: first.question,
+        answer: first.answer,
+        nextProblem: second,
       };
     });
   }, [config]);
@@ -264,7 +267,21 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
       setGameState(prev => {
         const nextState = { ...prev, rallyCount: prev.rallyCount + 1 };
         const scaled = getScaledConfig(config, nextState);
-        const problem = generateMathProblem(scaled);
+
+        let problem: MathProblem;
+        let nextProblem: MathProblem | null;
+
+        if (prev.nextProblem) {
+          // Consume the queued second problem from the pair
+          problem = prev.nextProblem;
+          nextProblem = null;
+        } else {
+          // Generate a fresh pair
+          const [first, second] = generateMathProblemPair(scaled);
+          problem = first;
+          nextProblem = second;
+        }
+
         return {
           ...nextState,
           currentPlayer: to,
@@ -272,6 +289,7 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
           isAnimating: false,
           question: problem.question,
           answer: problem.answer,
+          nextProblem,
         };
       });
       resetTimer();

@@ -1,1 +1,1 @@
-export { generateMathProblem } from '../../../shared/math';
+export { generateMathProblem, generateMathProblemPair } from '../../../shared/math';

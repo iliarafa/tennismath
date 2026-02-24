@@ -1,6 +1,6 @@
 import type { Level, LevelConfig, MatchScore, MathProblem } from '../../shared/types';
 import { LEVEL_CONFIGS } from '../../shared/levels';
-import { generateMathProblem } from '../../shared/math';
+import { generateMathProblem, generateMathProblemPair } from '../../shared/math';
 import { getDifficultyModifier, applyModifier } from '../../shared/scaling';
 import type { DifficultyContext } from '../../shared/scaling';
 import {
@@ -19,6 +19,7 @@ export interface GameRoomState {
   currentTurn: 'host' | 'guest';
   server: 'host' | 'guest';
   currentProblem: MathProblem;
+  nextProblem: MathProblem | null;
   rallyCount: number;
   matchOver: boolean;
   winner: 'host' | 'guest' | null;
@@ -44,21 +45,23 @@ export class GameEngine {
       currentTurn: 'host', // host serves first
       server: 'host',
       currentProblem: { question: '', answer: 0 },
+      nextProblem: null,
       rallyCount: 0,
       matchOver: false,
       winner: null,
     };
 
     const scaledConfig = this.getScaledConfig(state);
-    const problem = generateMathProblem(scaledConfig);
-    state.currentProblem = problem;
+    const [first, second] = generateMathProblemPair(scaledConfig);
+    state.currentProblem = first;
+    state.nextProblem = second;
 
     this.games.set(room.code, state);
     room.gameInProgress = true;
 
     // Emit to host (host is "player" from their perspective)
     emit(room.host.socketId, 'game:start', {
-      question: problem.question,
+      question: first.question,
       yourTurn: true,
       server: 'player' as const,
       timerSeconds: scaledConfig.timerSeconds,
@@ -66,7 +69,7 @@ export class GameEngine {
 
     // Emit to guest (guest sees host as "opponent")
     emit(room.guest.socketId, 'game:start', {
-      question: problem.question,
+      question: first.question,
       yourTurn: false,
       server: 'opponent' as const,
       timerSeconds: scaledConfig.timerSeconds,
@@ -193,11 +196,13 @@ export class GameEngine {
       state.server = serverAsPlayer === 'player' ? 'host' : 'guest';
       state.currentTurn = state.server;
       state.rallyCount = 0;
+      state.nextProblem = null;
     } else {
       // Point scored but game continues
       state.matchScore = { ...state.matchScore, currentGame: newGame };
       state.currentTurn = state.server;
       state.rallyCount = 0;
+      state.nextProblem = null;
     }
 
     // Emit score update
@@ -251,7 +256,16 @@ export class GameEngine {
     emit: EmitToPlayer
   ): void {
     const scaledConfig = this.getScaledConfig(state);
-    const problem = generateMathProblem(scaledConfig);
+
+    let problem: MathProblem;
+    if (state.nextProblem) {
+      problem = state.nextProblem;
+      state.nextProblem = null;
+    } else {
+      const [first, second] = generateMathProblemPair(scaledConfig);
+      problem = first;
+      state.nextProblem = second;
+    }
     state.currentProblem = problem;
 
     emit(room.host.socketId, 'game:question', {

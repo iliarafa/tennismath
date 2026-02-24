@@ -54,4 +54,5 @@ export interface GameState {
   matchOver: boolean;
   winner: Player | null;
   rallyCount: number;
+  nextProblem: MathProblem | null;
 }
