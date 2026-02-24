@@ -406,13 +406,13 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
             <span className="text-3xl font-bold text-yellow-400">DEUCE</span>
           ) : (
             <>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-[100px] justify-end">
                 {gameState.server === 'player' && <TennisBallIcon />}
                 <span className="text-sm font-medium">{p1Label}</span>
                 <span className="text-3xl font-bold">{pointDisplay.player}</span>
               </div>
-              <span className="text-2xl text-white/50">-</span>
-              <div className="flex items-center gap-2">
+              <span className="text-3xl font-bold text-white/50">-</span>
+              <div className="flex items-center gap-2 min-w-[100px] justify-start">
                 <span className="text-3xl font-bold">{pointDisplay.opponent}</span>
                 <span className="text-sm font-medium">{p2Label}</span>
                 {gameState.server === 'opponent' && <TennisBallIcon />}
@@ -422,7 +422,7 @@ export function MathTennisGame({ mode, level, onBack }: MathTennisGameProps) {
         </div>
 
         {/* Row 2: Games score */}
-        <div className="text-center text-sm text-white/80">
+        <div className="text-center text-sm font-medium text-white/80">
           <span>Games: {gameState.matchScore.playerGames} - {gameState.matchScore.opponentGames}</span>
         </div>
 
